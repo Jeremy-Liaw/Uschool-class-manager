@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>我的每日課表</title>
+<style>
+:root {
+  --bg:#f7f8fb; --card:#ffffff; --ink:#14202b; --muted:#6b7280;
+  --line:#e5e7eb; --accent:#1f6f5f; --accent-soft:#e7f4ef;
+  --empty:#f3f4f6; --special:#fff3e8; --now:#fff5c2;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans TC",sans-serif;background:var(--bg);color:var(--ink)}
+.app{max-width:780px;margin:auto;padding:20px 16px 48px}
+.hero{background:linear-gradient(135deg,#17343d,#244f58);color:white;border-radius:24px;padding:22px;box-shadow:0 12px 30px rgba(20,32,43,.12)}
+.topline{display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+.kicker{font-size:13px;opacity:.75;margin-bottom:6px}
+h1{font-size:28px;margin:0 0 6px}
+.date{font-size:16px;opacity:.92}
+.badge{background:rgba(255,255,255,.14);padding:9px 12px;border-radius:999px;font-size:13px;white-space:nowrap}
+.controls{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;margin:16px 0}
+button,input[type=date]{border:1px solid var(--line);background:white;border-radius:14px;padding:11px 13px;font:inherit;color:var(--ink)}
+button{cursor:pointer;font-weight:650}
+button:hover{background:#f1f5f9}
+.today-btn{background:var(--accent);color:white;border-color:var(--accent)}
+.today-btn:hover{background:#195c4f}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}
+.section-title h2{font-size:18px;margin:0}
+.summary{font-size:13px;color:var(--muted)}
+.timeline{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:stretch}
+.time{padding:14px 8px;text-align:center;color:var(--muted);font-size:12px;line-height:1.45;border-radius:16px;background:white;border:1px solid var(--line)}
+.time strong{display:block;color:var(--ink);font-size:14px;margin-bottom:4px}
+.card{padding:14px 16px;border-radius:16px;background:var(--card);border:1px solid var(--line);min-height:68px;display:flex;flex-direction:column;justify-content:center}
+.card.course{background:var(--accent-soft);border-color:#cfe8de}
+.card.empty{background:var(--empty);color:#8a9098}
+.card.special{background:var(--special);border-color:#f4d8bd}
+.card.now{outline:3px solid #f1c94a;background:var(--now)}
+.course-name{font-weight:750;font-size:16px;white-space:pre-line}
+.note{font-size:12px;color:var(--muted);margin-top:4px;white-space:pre-line}
+.lunch{margin:10px 0;padding:12px 14px;border-radius:14px;background:#fff8dd;border:1px solid #f0e2a4;text-align:center;color:#776528;font-size:13px}
+.empty-day{padding:34px 18px;text-align:center;border:1px dashed #cbd5e1;border-radius:20px;background:white;color:var(--muted)}
+.footer{margin-top:22px;color:var(--muted);font-size:12px;text-align:center;line-height:1.7}
+@media (max-width:560px){
+ .app{padding:12px 10px 32px} .hero{border-radius:20px;padding:18px}
+ h1{font-size:24px} .row{grid-template-columns:78px 1fr} .controls{grid-template-columns:1fr 1fr}
+ .controls input{grid-column:1/3;order:-1} .badge{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hero">
+    <div class="topline">
+      <div>
+        <div class="kicker">自動偵測日期 · 每日課表</div>
+        <h1 id="heroTitle">今天的課表</h1>
+        <div class="date" id="dateText"></div>
+      </div>
+      <div class="badge" id="statusBadge">讀取中</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="prevBtn">← 前一天</button>
+    <input id="datePicker" type="date">
+    <button id="nextBtn">後一天 →</button>
+  </div>
+  <button class="today-btn" id="todayBtn" style="width:100%">回到今天</button>
+
+  <div class="section-title">
+    <h2 id="sectionTitle">課程</h2>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div id="schedule"></div>
+
+  <div class="footer">
+    課表資料範圍：2026-09-14 ～ 2027-01-15<br>
+    網頁會依裝置的本地日期自動顯示當天課表。
+  </div>
+</div>
+
+<script>
+const DATA = {"2026-09-14": {"1": "空堂", "2": "空堂", "3": "國文 B", "4": "社會情緒學習 A", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-15": {"1": "空堂", "2": "Tri-PBL B\n問題導向PBLB", "3": "空堂", "4": "生涯探索 A", "5": "化學 A", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-16": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "設計思考", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-17": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-18": {"1": "資訊科技 A\n電腦教室（名稱暫定）", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-21": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-22": {"1": "空堂", "2": "英文 C", "3": "空堂", "4": "空堂", "5": "物理", "6": "空堂", "7": "空堂", "8": "公民與社會 B"}, "2026-09-23": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "設計思考", "5": "空堂", "6": "空堂", "7": "Tri-PBL B\n問題導向PBLA", "8": "空堂"}, "2026-09-24": {"1": "經典閱讀 B", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "空堂", "5": "國文 B", "6": "社會情緒學習 A", "7": "生涯探索 A", "8": "空堂"}, "2026-09-25": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-28": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-09-29": {"1": "空堂", "2": "空堂", "3": "國文 B", "4": "空堂", "5": "公民與社會 B", "6": "學習之道 B", "7": "空堂", "8": "空堂"}, "2026-09-30": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "空堂", "5": "Tri-PBL B\n問題導向PBLA", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-01": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "健康生活 B", "7": "空堂", "8": "生涯探索 A"}, "2026-10-02": {"1": "學校開箱日活動\n全日活動", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-05": {"1": "空堂", "2": "空堂", "3": "公民與社會 B", "4": "空堂", "5": "空堂", "6": "空堂", "7": "社會情緒學習 A", "8": "空堂"}, "2026-10-06": {"1": "空堂", "2": "空堂", "3": "公民與社會 B", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-07": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "國文 B", "4": "空堂", "5": "Tri-PBL B\n問題導向PBLB", "6": "全校時間", "7": "空堂", "8": "空堂"}, "2026-10-08": {"1": "設計思考校外教學活動\n全日活動", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-09": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-12": {"1": "空堂", "2": "空堂", "3": "公民與社會 B", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "社會情緒學習 A"}, "2026-10-13": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "經典閱讀 B", "6": "空堂", "7": "性向測驗", "8": "空堂"}, "2026-10-14": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "公民與社會 B", "6": "空堂", "7": "設計思考", "8": "空堂"}, "2026-10-15": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "興趣測驗", "7": "空堂", "8": "空堂"}, "2026-10-16": {"1": "《我們的島》桌遊活動", "2": "選修歷史專屬活動", "3": "空堂", "4": "空堂", "5": "空堂", "6": "資訊科技 A+B\n線上同步教室", "7": "空堂", "8": "英文 C"}, "2026-10-19": {"1": "空堂", "2": "公民與社會 B", "3": "PBL同時段\nTri-PBL A+B", "4": "空堂", "5": "空堂", "6": "學習之道 B", "7": "社會情緒學習 A", "8": "空堂"}, "2026-10-20": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "空堂", "5": "物理", "6": "空堂", "7": "資訊科技 A\n電腦教室（名稱暫定）", "8": "空堂"}, "2026-10-21": {"1": "高一新生健檢活動\n上午", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "生涯探索 A", "7": "空堂", "8": "社會情緒學習 A+B"}, "2026-10-22": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "設計思考", "6": "空堂", "7": "空堂", "8": "英文 C"}, "2026-10-23": {"1": "生化校外參訪活動\n化學A+化學B+生物", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "Tri-PBL B\n問題導向PBLA", "7": "空堂", "8": "空堂"}, "2026-10-26": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-27": {"1": "經典閱讀 A+B", "2": "國文 B", "3": "公民與社會 B", "4": "空堂", "5": "歷史期中紙筆測驗\n歷史A+B", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-28": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "國文 B", "4": "空堂", "5": "2026 台積鼓勵永遠的說書人活動", "6": "地理期中測驗", "7": "空堂", "8": "空堂"}, "2026-10-29": {"1": "教師工作坊：創要競賽\n活動", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-10-30": {"1": "教師工作坊：創業競賽\n活動", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "國文 B", "7": "空堂", "8": "空堂"}, "2026-11-02": {"1": "空堂", "2": "公民與社會 B", "3": "空堂", "4": "生涯探索 A", "5": "空堂", "6": "社會情緒學習 A", "7": "空堂", "8": "空堂"}, "2026-11-03": {"1": "英文校外教學\n上午", "2": "空堂", "3": "空堂", "4": "空堂", "5": "Tri-PBL B\n問題導向PBLB", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-04": {"1": "空堂", "2": "健康生活 B", "3": "空堂", "4": "設計思考", "5": "空堂", "6": "地理校外參訪", "7": "空堂", "8": "空堂"}, "2026-11-05": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-06": {"1": "資訊科技 A\n線上同步教室", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "數學 A\n線上同步教室", "8": "空堂"}, "2026-11-09": {"1": "空堂", "2": "公民與社會 B", "3": "空堂", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "社會情緒學習 A", "8": "空堂"}, "2026-11-10": {"1": "經典閱讀 B", "2": "空堂", "3": "空堂", "4": "空堂", "5": "資訊科技 A\n電腦教室（名稱暫定）", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-11": {"1": "數學 A\n線上同步教室", "2": "空堂", "3": "空堂", "4": "全校時間", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-12": {"1": "國文 B", "2": "空堂", "3": "健康生活 B", "4": "設計思考", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-13": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "Tri-PBL B\n問題導向PBLA", "8": "空堂"}, "2026-11-16": {"1": "數學 A", "2": "生涯講座1\n生涯探索A+B，閱讀室", "3": "空堂", "4": "空堂", "5": "空堂", "6": "社團培力：胡子講座", "7": "空堂", "8": "空堂"}, "2026-11-17": {"1": "空堂", "2": "空堂", "3": "英文 C", "4": "空堂", "5": "物理", "6": "空堂", "7": "Tri-PBL B\n問題導向PBLB", "8": "空堂"}, "2026-11-18": {"1": "國文 B", "2": "英文 C", "3": "空堂", "4": "空堂", "5": "學習之道 B", "6": "空堂", "7": "設計思考", "8": "空堂"}, "2026-11-19": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "社會情緒學習 A", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-20": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-23": {"1": "空堂", "2": "空堂", "3": "英文 C", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "社會情緒學習 A", "8": "空堂"}, "2026-11-24": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "Tri-PBL B\n問題導向PBLA", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-25": {"1": "空堂", "2": "國文 B", "3": "空堂", "4": "空堂", "5": "資訊科技 A\n電腦教室（名稱暫定）", "6": "書院時間", "7": "空堂", "8": "空堂"}, "2026-11-26": {"1": "國文 B", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "健康生活 B", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-11-27": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "英文 C", "7": "空堂", "8": "空堂"}, "2026-11-30": {"1": "空堂", "2": "公民與社會 B", "3": "空堂", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "社會情緒學習 A", "8": "空堂"}, "2026-12-01": {"1": "空堂", "2": "國文 B", "3": "公民與社會 B", "4": "空堂", "5": "物理\n教室2間", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-02": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "經典閱讀 B", "5": "空堂", "6": "設計思考", "7": "空堂", "8": "空堂"}, "2026-12-03": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "Tri-PBL B\n問題導向PBLB", "5": "生涯講座2\n生涯探索A+B，閱讀室", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-04": {"1": "資訊科技 A\n電腦教室（名稱暫定）", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "英文 C", "7": "國文 B", "8": "空堂"}, "2026-12-07": {"1": "空堂", "2": "健康生活 B", "3": "空堂", "4": "國文 B", "5": "公民與社會 B", "6": "社會情緒學習 A", "7": "空堂", "8": "空堂"}, "2026-12-08": {"1": "空堂", "2": "空堂", "3": "國文 B", "4": "全校時間", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-09": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "設計思考", "7": "空堂", "8": "空堂"}, "2026-12-10": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "國文 B", "5": "空堂", "6": "學習之道 B", "7": "空堂", "8": "空堂"}, "2026-12-11": {"1": "Tri-PBL B\n問題導向PBLA", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-14": {"1": "空堂", "2": "公民與社會 B", "3": "空堂", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "社會情緒學習 A", "8": "空堂"}, "2026-12-15": {"1": "經典閱讀 B", "2": "空堂", "3": "空堂", "4": "空堂", "5": "資訊科技 A\n電腦教室（名稱暫定）", "6": "公民與社會 B", "7": "空堂", "8": "空堂"}, "2026-12-16": {"1": "空堂", "2": "健康生活 B", "3": "空堂", "4": "空堂", "5": "設計思考", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-17": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "全校時間", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-18": {"1": "數學 A\n線上同步教室", "2": "國文 B", "3": "空堂", "4": "空堂", "5": "空堂", "6": "英文 C", "7": "空堂", "8": "空堂"}, "2026-12-21": {"1": "空堂", "2": "公民與社會 B", "3": "生涯探索 A", "4": "空堂", "5": "國文 B", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-22": {"1": "國文 B", "2": "公民與社會 B", "3": "空堂", "4": "資訊科技 A\n電腦教室（名稱暫定）", "5": "空堂", "6": "經典閱讀 B", "7": "空堂", "8": "空堂"}, "2026-12-23": {"1": "空堂", "2": "社會情緒學習 A", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-24": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "設計思考", "5": "空堂", "6": "空堂", "7": "國文 B", "8": "空堂"}, "2026-12-25": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-28": {"1": "清交大學參訪\n經典閱讀A+B，活動", "2": "空堂", "3": "空堂", "4": "空堂", "5": "清交大學參訪\n學習之道A+B，活動", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-29": {"1": "社會情緒學習 A", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-30": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "生涯探索 A", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2026-12-31": {"1": "空堂", "2": "數學 A\n線上同步教室", "3": "空堂", "4": "空堂", "5": "空堂", "6": "書院時間", "7": "空堂", "8": "空堂"}, "2027-01-01": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-04": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-05": {"1": "空堂", "2": "空堂", "3": "空堂", "4": "國文交流\n國文A+國文B+國文C，閱讀室", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-06": {"1": "空堂", "2": "空堂", "3": "Tri-PBL B\n問題導向PBLB", "4": "數學 A\n線上同步教室", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-07": {"1": "Tri-PBL B\n問題導向PBLA", "2": "空堂", "3": "全校時間", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-08": {"1": "數學 A", "2": "空堂", "3": "化學期末考\n化學A+化學B，閱讀室", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-11": {"1": "設計思考", "2": "空堂", "3": "空堂", "4": "空堂", "5": "歷史期末紙筆測驗\n歷史A+B，閱讀室", "6": "《我的使用說明書》發表、互評\n社會情緒學習A+B，閱讀室", "7": "化學 A", "8": "空堂"}, "2027-01-12": {"1": "空堂", "2": "空堂", "3": "生涯探索 A", "4": "空堂", "5": "物理\n1間圖書館", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-13": {"1": "空堂", "2": "英文領域聯合發表\n英文A+B+C，閱讀室", "3": "空堂", "4": "空堂", "5": "空堂", "6": "資訊科技 A\n電腦教室（名稱暫定）", "7": "空堂", "8": "空堂"}, "2027-01-14": {"1": "Tri-PBL同時段\nPBLA+PBLB", "2": "空堂", "3": "空堂", "4": "空堂", "5": "數學 A\n線上同步教室", "6": "空堂", "7": "空堂", "8": "空堂"}, "2027-01-15": {"1": "空堂", "2": "經典閱讀 B", "3": "空堂", "4": "空堂", "5": "空堂", "6": "空堂", "7": "空堂", "8": "空堂"}};
+const META = {"termStart": "2026-09-14", "termEnd": "2027-01-15", "periodTimes": {"1": "08:20–09:10", "2": "09:15–10:05", "3": "10:10–11:00", "4": "11:10–12:00", "5": "13:15–14:05", "6": "14:10–15:00", "7": "15:05–15:55", "8": "16:00–16:50"}, "lunch": "12:00–13:10", "title": "我的每日課表"};
+
+const specialWords = ["全校","活動","測驗","考","參訪","校外","講座","工作坊","書院","健檢","發表","交流","社團"];
+const weekdays = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
+
+function localISO(d=new Date()) {
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function parseISO(s) {
+  const [y,m,d]=s.split("-").map(Number);
+  return new Date(y,m-1,d);
+}
+function formatDate(s) {
+  const d=parseISO(s);
+  return `${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · ${weekdays[d.getDay()]}`;
+}
+function addDays(s,n) {
+  const d=parseISO(s); d.setDate(d.getDate()+n); return localISO(d);
+}
+function currentPeriod(dateStr) {
+  if (dateStr !== localISO()) return null;
+  const now = new Date();
+  const mins = now.getHours()*60 + now.getMinutes();
+  const ranges = {
+    1:[8*60+20,9*60+10],2:[9*60+15,10*60+5],3:[10*60+10,11*60],4:[11*60+10,12*60],
+    5:[13*60+15,14*60+5],6:[14*60+10,15*60],7:[15*60+5,15*60+55],8:[16*60,16*60+50]
+  };
+  for (const [p,[a,b]] of Object.entries(ranges)) if (mins>=a && mins<=b) return p;
+  return null;
+}
+
+let selected = localISO();
+
+function splitValue(v) {
+  if (!v || v === "空堂") return {name:"空堂", note:""};
+  const parts = v.split("\n");
+  return {name:parts[0], note:parts.slice(1).join("\n")};
+}
+
+function render() {
+  document.getElementById("datePicker").value = selected;
+  document.getElementById("dateText").textContent = formatDate(selected);
+
+  const isToday = selected === localISO();
+  document.getElementById("heroTitle").textContent = isToday ? "今天的課表" : "這一天的課表";
+
+  const d = parseISO(selected);
+  const weekend = d.getDay()===0 || d.getDay()===6;
+  const dayData = DATA[selected];
+
+  const badge = document.getElementById("statusBadge");
+  if (isToday) badge.textContent = "今天";
+  else if (selected < META.termStart || selected > META.termEnd) badge.textContent = "學期外";
+  else if (weekend) badge.textContent = "週末";
+  else badge.textContent = "指定日期";
+
+  const root = document.getElementById("schedule");
+  root.innerHTML = "";
+
+  if (!dayData) {
+    root.innerHTML = `<div class="empty-day">${weekend ? "今天是週末，沒有排定課程。" : "這一天沒有課表資料。"}</div>`;
+    document.getElementById("summary").textContent = "0 堂";
+    return;
+  }
+
+  let count = 0;
+  const nowP = currentPeriod(selected);
+
+  for (let p=1; p<=8; p++) {
+    if (p===5) {
+      const lunch = document.createElement("div");
+      lunch.className = "lunch";
+      lunch.textContent = `午休 · ${META.lunch}`;
+      root.appendChild(lunch);
+    }
+
+    const raw = dayData[String(p)] || "空堂";
+    const {name,note} = splitValue(raw);
+    if (name !== "空堂") count++;
+
+    const row = document.createElement("div");
+    row.className = "row";
+
+    const time = document.createElement("div");
+    time.className = "time";
+    time.innerHTML = `<strong>第 ${p} 節</strong>${META.periodTimes[p]}`;
+
+    const card = document.createElement("div");
+    let cls = name==="空堂" ? "empty" : (specialWords.some(w => raw.includes(w)) ? "special" : "course");
+    card.className = "card " + cls + (String(p)===String(nowP) ? " now" : "");
+    card.innerHTML = `<div class="course-name">${name}</div>${note ? `<div class="note">${note}</div>` : ""}`;
+
+    row.append(time,card);
+    root.appendChild(row);
+  }
+
+  document.getElementById("summary").textContent = `${count} 堂課／活動`;
+}
+
+document.getElementById("prevBtn").onclick = () => { selected=addDays(selected,-1); render(); };
+document.getElementById("nextBtn").onclick = () => { selected=addDays(selected,1); render(); };
+document.getElementById("todayBtn").onclick = () => { selected=localISO(); render(); };
+document.getElementById("datePicker").onchange = e => { if(e.target.value){selected=e.target.value;render();} };
+
+render();
+setInterval(render, 60000);
+</script>
+</body>
+</html>
